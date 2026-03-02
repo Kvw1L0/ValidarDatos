@@ -3,77 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Sueños</title>
+    <title>Registro - Evento de Sueños</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
 
-    <div id="app" class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+    <div id="app" class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-sm">
         <div id="form-ui">
-            <h1 class="text-3xl font-bold text-blue-600 mb-2">Bienvenido</h1>
-            <p class="text-gray-500 mb-6">Regístrate para el evento y cuéntanos tu sueño.</p>
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-extrabold text-indigo-900">¡Bienvenido!</h1>
+                <p class="text-indigo-500 mt-2">Regístrate y comparte tu gran sueño</p>
+            </div>
             
-            <input id="nombre" type="text" placeholder="Nombre completo" class="w-full p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
-            <input id="edad" type="number" placeholder="Edad" class="w-full p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none">
-            <textarea id="sueno" placeholder="¿Cuál es tu sueño a cumplir?" class="w-full p-3 mb-6 border rounded-lg h-24 focus:ring-2 focus:ring-blue-400 outline-none"></textarea>
-            
-            <button onclick="guardarYGenerar()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
-                Obtener mi Pase QR
-            </button>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                    <input id="nombre" type="text" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Edad</label>
+                    <input id="edad" type="number" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">¿Cuál es tu sueño a cumplir?</label>
+                    <textarea id="sueno" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl h-28 focus:ring-2 focus:ring-indigo-400 outline-none transition-all resize-none"></textarea>
+                </div>
+                
+                <button onclick="guardarYGenerar()" id="btn-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-200">
+                    Generar mi Pase Mágico
+                </button>
+            </div>
         </div>
 
-        <div id="qr-ui" class="hidden text-center">
-            <h2 class="text-2xl font-bold mb-4 text-green-600">¡Registro Exitoso!</h2>
-            <div id="qrcode" class="flex justify-center mb-6 p-4 bg-white border rounded-xl"></div>
-            <p class="text-sm text-gray-500 mb-6">Muestra este código al ingresar al evento.</p>
-            <button onclick="location.reload()" class="text-blue-600 font-semibold underline">Nuevo registro</button>
+        <div id="qr-ui" class="hidden text-center animate-in fade-in duration-500">
+            <div class="mb-6">
+                <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">¡Todo listo!</h2>
+                <p class="text-gray-500">Guarda este código para el ingreso</p>
+            </div>
+            
+            <div class="flex justify-center p-6 bg-indigo-50 rounded-2xl border-2 border-dashed border-indigo-200 mb-6">
+                <div id="qrcode"></div>
+            </div>
+            
+            <button onclick="location.reload()" class="text-indigo-600 font-medium hover:underline">Registrar a otra persona</button>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN FIREBASE (Reemplaza con tus datos)
         const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROYECTO.firebaseapp.com",
-            projectId: "TU_PROYECTO_ID",
-            storageBucket: "TU_PROYECTO.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyArFGT5ur4H4A-WEqvb1uXnx_tjM5LKgxo",
+            authDomain: "validardatosevento.firebaseapp.com",
+            projectId: "validardatosevento",
+            storageBucket: "validardatosevento.firebasestorage.app",
+            messagingSenderId: "1047221383023",
+            appId: "1:1047221383023:web:34dcd03db945d86d73c29a"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         async function guardarYGenerar() {
-            const nombre = document.getElementById('nombre').value;
+            const nombre = document.getElementById('nombre').value.trim();
             const edad = document.getElementById('edad').value;
-            const sueno = document.getElementById('sueno').value;
+            const sueno = document.getElementById('sueno').value.trim();
+            const btn = document.getElementById('btn-submit');
 
-            if(!nombre || !edad || !sueno) return alert("Por favor completa todos los campos");
+            if(!nombre || !edad || !sueno) return alert("¡Ups! Necesitamos todos tus datos.");
+
+            btn.disabled = true;
+            btn.innerText = "Procesando...";
 
             try {
-                // 1. Guardar en Firestore para obtener un ID único
                 const docRef = await db.collection("invitados").add({
                     nombre, edad, sueno,
                     asistio: false,
-                    fecha: new Date()
+                    fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // 2. Cambiar UI
                 document.getElementById('form-ui').classList.add('hidden');
                 document.getElementById('qr-ui').classList.remove('hidden');
 
-                // 3. Generar QR con el ID del documento
                 new QRCode(document.getElementById("qrcode"), {
-                    text: docRef.id, // Solo guardamos el ID para seguridad
-                    width: 256,
-                    height: 256,
-                    colorDark: "#1e40af"
+                    text: docRef.id,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#312e81",
+                    correctLevel: QRCode.CorrectLevel.H
                 });
-
-            } catch (e) { console.error("Error: ", e); }
+            } catch (e) {
+                alert("Error al guardar: " + e.message);
+                btn.disabled = false;
+                btn.innerText = "Generar mi Pase Mágico";
+            }
         }
     </script>
 </body>
