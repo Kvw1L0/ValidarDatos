@@ -3,26 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Supervisor</title>
+    <title>KPI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 min-h-screen text-white p-4">
-    <div class="max-w-md mx-auto">
-        <h1 class="text-center text-xl font-bold mb-4 text-indigo-400 uppercase tracking-widest">Control de Acceso</h1>
-        <div id="reader" class="rounded-2xl overflow-hidden border-2 border-indigo-500 bg-black shadow-2xl shadow-indigo-500/20"></div>
-        
-        <div id="res" class="mt-6 p-6 bg-white text-slate-900 rounded-3xl hidden shadow-2xl transform animate-in slide-in-from-bottom duration-300">
-            <h2 id="r-nombre" class="text-3xl font-black mb-1 leading-tight uppercase"></h2>
-            <p id="r-edad" class="text-indigo-600 font-bold mb-4 tracking-tighter text-lg"></p>
-            <div class="bg-indigo-50 p-4 rounded-2xl italic mb-6 border-l-4 border-indigo-500">
-                <span class="block text-[10px] text-indigo-400 font-black uppercase not-italic mb-1 tracking-widest">Sueño del Invitado:</span>
-                <span id="r-sueno" class="text-slate-700 text-lg"></span>
+<body class="bg-slate-50 p-6 md:p-12">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div>
+                <h1 class="text-4xl font-black text-slate-800 tracking-tighter italic">EVENT INSIGHTS</h1>
+                <p class="text-indigo-500 font-bold uppercase text-xs tracking-widest">Métricas en tiempo real</p>
             </div>
-            <div id="r-status" class="py-4 text-center rounded-xl font-black uppercase tracking-widest mb-4"></div>
-            <button onclick="location.reload()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition">ESCANEAR SIGUIENTE</button>
+            <button onclick="exportar()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold shadow-xl transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                DESCARGAR EXCEL (.CSV)
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border-b-8 border-indigo-500 text-center">
+                <p class="text-slate-400 font-bold uppercase text-xs mb-1">Registrados</p>
+                <h2 id="t-reg" class="text-6xl font-black text-slate-800">0</h2>
+            </div>
+            <div class="bg-white p-8 rounded-3xl shadow-sm border-b-8 border-green-500 text-center">
+                <p class="text-slate-400 font-bold uppercase text-xs mb-1">Ingresados</p>
+                <h2 id="t-asist" class="text-6xl font-black text-green-600">0</h2>
+            </div>
+            <div class="bg-white p-8 rounded-3xl shadow-sm border-b-8 border-amber-500 text-center">
+                <p class="text-slate-400 font-bold uppercase text-xs mb-1">% Asistencia</p>
+                <h2 id="t-porc" class="text-6xl font-black text-amber-500">0%</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div class="bg-white p-8 rounded-3xl shadow-sm">
+                <h3 class="font-black text-slate-400 uppercase text-sm mb-6 tracking-widest">Distribución por Edades</h3>
+                <canvas id="chart"></canvas>
+            </div>
+            <div class="bg-white p-8 rounded-3xl shadow-sm">
+                <h3 class="font-black text-slate-400 uppercase text-sm mb-6 tracking-widest">Muro de Sueños</h3>
+                <div id="feed" class="space-y-4 overflow-y-auto max-h-[400px] pr-2"></div>
+            </div>
         </div>
     </div>
 
@@ -38,30 +60,55 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        function onScanSuccess(id) {
-            scanner.clear();
-            db.collection("invitados").doc(id).get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const yaAsistio = data.asistio;
-                    document.getElementById('r-nombre').innerText = data.nombre;
-                    document.getElementById('r-edad').innerText = data.edad + " AÑOS";
-                    document.getElementById('r-sueno').innerText = `"${data.sueno}"`;
-                    
-                    const s = document.getElementById('r-status');
-                    s.innerText = yaAsistio ? "YA INGRESÓ" : "VALIDADO ✅";
-                    s.className = yaAsistio ? "py-4 text-center rounded-xl font-black bg-amber-100 text-amber-600 border-2 border-amber-200" : "py-4 text-center rounded-xl font-black bg-green-100 text-green-600 border-2 border-green-200";
-                    
-                    if(!yaAsistio) db.collection("invitados").doc(id).update({ asistio: true });
-                    document.getElementById('res').classList.remove('hidden');
-                } else { 
-                    alert("QR NO VÁLIDO O NO REGISTRADO"); 
-                    location.reload(); 
-                }
-            }).catch(err => { alert("Error: " + err); location.reload(); });
+        const ctx = document.getElementById('chart').getContext('2d');
+        let chart = new Chart(ctx, {
+            type: 'bar',
+            data: { 
+                labels: ['<18', '18-25', '26-35', '36+'], 
+                datasets: [{ 
+                    label: 'Invitados', 
+                    data: [0,0,0,0], 
+                    backgroundColor: '#6366f1',
+                    borderRadius: 10
+                }] 
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+
+        db.collection("invitados").orderBy("fecha", "desc").onSnapshot(snap => {
+            let reg = snap.size, asist = 0, eds = [0,0,0,0], html = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.asistio) asist++;
+                const e = parseInt(d.edad);
+                if(e<18) eds[0]++; else if(e<=25) eds[1]++; else if(e<=35) eds[2]++; else eds[3]++;
+                
+                html += `<div class="p-4 ${d.asistio ? 'bg-indigo-50 border-indigo-500' : 'bg-slate-50 border-slate-200'} border-l-4 rounded-r-xl transition-all">
+                    <p class="text-[10px] font-black uppercase ${d.asistio ? 'text-indigo-400' : 'text-slate-400'}">${d.nombre} ${d.asistio ? '• INGRESÓ' : ''}</p>
+                    <p class="italic text-slate-700 font-medium leading-tight">"${d.sueno}"</p>
+                </div>`;
+            });
+            document.getElementById('t-reg').innerText = reg;
+            document.getElementById('t-asist').innerText = asist;
+            document.getElementById('t-porc').innerText = reg > 0 ? Math.round((asist/reg)*100) + "%" : "0%";
+            document.getElementById('feed').innerHTML = html;
+            chart.data.datasets[0].data = eds;
+            chart.update();
+        });
+
+        function exportar() {
+            db.collection("invitados").get().then(snap => {
+                let csv = "\uFEFFNombre,Edad,Sueño,Asistió\n";
+                snap.forEach(doc => { 
+                    const d = doc.data(); 
+                    csv += `${d.nombre},${d.edad},"${d.sueno}",${d.asistio ? 'SÍ' : 'NO'}\n`; 
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'kpis_evento_sueños.csv'; a.click();
+            });
         }
-        let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
-        scanner.render(onScanSuccess);
     </script>
 </body>
 </html>
