@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner - Staff</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-900 min-h-screen text-white p-4">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold mb-6 text-center">Validación de Ingreso</h1>
+        
+        <div id="reader" class="overflow-hidden rounded-2xl shadow-2xl bg-black border-2 border-indigo-500"></div>
+
+        <div id="resultado" class="mt-8 p-6 hidden rounded-2xl border-t-8 transition-all bg-white text-slate-900">
+            <div id="icon-status" class="mb-4"></div>
+            <h2 id="res-nombre" class="text-3xl font-black uppercase leading-tight"></h2>
+            <p id="res-edad" class="text-lg font-semibold text-slate-500 mb-2"></p>
+            <div class="bg-indigo-50 p-4 rounded-xl border-l-4 border-indigo-500 italic">
+                <span class="text-xs text-indigo-400 block not-italic font-bold uppercase mb-1">Sueño por cumplir:</span>
+                <span id="res-sueno" class="text-xl"></span>
+            </div>
+            <button onclick="cerrarResultado()" class="w-full mt-6 bg-slate-900 text-white py-3 rounded-xl font-bold">SIGUIENTE ESCANEO</button>
+        </div>
+    </div>
+
+    <script>
+        // Mismo objeto firebaseConfig...
+        const firebaseConfig = {
+            apiKey: "AIzaSyArFGT5ur4H4A-WEqvb1uXnx_tjM5LKgxo",
+            authDomain: "validardatosevento.firebaseapp.com",
+            projectId: "validardatosevento",
+            storageBucket: "validardatosevento.firebasestorage.app",
+            messagingSenderId: "1047221383023",
+            appId: "1:1047221383023:web:34dcd03db945d86d73c29a"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function onScanSuccess(decodedText) {
+            html5QrcodeScanner.clear(); // Detiene el escáner mientras procesa
+            
+            db.collection("invitados").doc(decodedText).get().then((doc) => {
+                if (doc.exists) {
+                    const user = doc.data();
+                    const yaAsistio = user.asistio;
+                    
+                    document.getElementById('res-nombre').innerText = user.nombre;
+                    document.getElementById('res-edad').innerText = user.edad + " años";
+                    document.getElementById('res-sueno').innerText = user.sueno;
+                    
+                    const resDiv = document.getElementById('resultado');
+                    resDiv.classList.remove('hidden');
+
+                    if(yaAsistio) {
+                        resDiv.style.borderTopColor = "#f59e0b"; // Naranja
+                        document.getElementById('icon-status').innerHTML = "⚠️ <span class='text-orange-600 font-bold'>YA INGRESÓ</span>";
+                    } else {
+                        resDiv.style.borderTopColor = "#10b981"; // Verde
+                        document.getElementById('icon-status').innerHTML = "✅ <span class='text-green-600 font-bold'>INGRESO VÁLIDO</span>";
+                        db.collection("invitados").doc(decodedText).update({ asistio: true });
+                    }
+                } else {
+                    alert("⚠️ QR NO REGISTRADO EN EL SISTEMA");
+                    reiniciarScanner();
+                }
+            });
+        }
+
+        function cerrarResultado() {
+            document.getElementById('resultado').classList.add('hidden');
+            reiniciarScanner();
+        }
+
+        function reiniciarScanner() {
+            html5QrcodeScanner.render(onScanSuccess);
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>
