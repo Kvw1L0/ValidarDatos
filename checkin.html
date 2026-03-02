@@ -3,84 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner - Staff</title>
+    <title>Scanner Supervisor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-900 min-h-screen text-white p-4">
+<body class="bg-slate-950 min-h-screen text-white p-4">
     <div class="max-w-md mx-auto">
-        <h1 class="text-2xl font-bold mb-6 text-center">Validación de Ingreso</h1>
+        <h1 class="text-center text-xl font-bold mb-4 text-indigo-400 uppercase tracking-widest">Control de Acceso</h1>
+        <div id="reader" class="rounded-2xl overflow-hidden border-2 border-indigo-500 bg-black shadow-2xl shadow-indigo-500/20"></div>
         
-        <div id="reader" class="overflow-hidden rounded-2xl shadow-2xl bg-black border-2 border-indigo-500"></div>
-
-        <div id="resultado" class="mt-8 p-6 hidden rounded-2xl border-t-8 transition-all bg-white text-slate-900">
-            <div id="icon-status" class="mb-4"></div>
-            <h2 id="res-nombre" class="text-3xl font-black uppercase leading-tight"></h2>
-            <p id="res-edad" class="text-lg font-semibold text-slate-500 mb-2"></p>
-            <div class="bg-indigo-50 p-4 rounded-xl border-l-4 border-indigo-500 italic">
-                <span class="text-xs text-indigo-400 block not-italic font-bold uppercase mb-1">Sueño por cumplir:</span>
-                <span id="res-sueno" class="text-xl"></span>
+        <div id="res" class="mt-6 p-6 bg-white text-slate-900 rounded-3xl hidden shadow-2xl transform animate-in slide-in-from-bottom duration-300">
+            <h2 id="r-nombre" class="text-3xl font-black mb-1 leading-tight uppercase"></h2>
+            <p id="r-edad" class="text-indigo-600 font-bold mb-4 tracking-tighter text-lg"></p>
+            <div class="bg-indigo-50 p-4 rounded-2xl italic mb-6 border-l-4 border-indigo-500">
+                <span class="block text-[10px] text-indigo-400 font-black uppercase not-italic mb-1 tracking-widest">Sueño del Invitado:</span>
+                <span id="r-sueno" class="text-slate-700 text-lg"></span>
             </div>
-            <button onclick="cerrarResultado()" class="w-full mt-6 bg-slate-900 text-white py-3 rounded-xl font-bold">SIGUIENTE ESCANEO</button>
+            <div id="r-status" class="py-4 text-center rounded-xl font-black uppercase tracking-widest mb-4"></div>
+            <button onclick="location.reload()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition">ESCANEAR SIGUIENTE</button>
         </div>
     </div>
 
     <script>
-        // Mismo objeto firebaseConfig...
         const firebaseConfig = {
-            apiKey: "AIzaSyArFGT5ur4H4A-WEqvb1uXnx_tjM5LKgxo",
-            authDomain: "validardatosevento.firebaseapp.com",
-            projectId: "validardatosevento",
-            storageBucket: "validardatosevento.firebasestorage.app",
-            messagingSenderId: "1047221383023",
-            appId: "1:1047221383023:web:34dcd03db945d86d73c29a"
+            apiKey: "AIzaSyB2AAnosFdchf9vxhBRzlf5F0GpRDvzFSQ",
+            authDomain: "validatos-18ec1.firebaseapp.com",
+            projectId: "validatos-18ec1",
+            storageBucket: "validatos-18ec1.firebasestorage.app",
+            messagingSenderId: "781964238026",
+            appId: "1:781964238026:web:3573344e6f0d70922de833"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        function onScanSuccess(decodedText) {
-            html5QrcodeScanner.clear(); // Detiene el escáner mientras procesa
-            
-            db.collection("invitados").doc(decodedText).get().then((doc) => {
+        function onScanSuccess(id) {
+            scanner.clear();
+            db.collection("invitados").doc(id).get().then(doc => {
                 if (doc.exists) {
-                    const user = doc.data();
-                    const yaAsistio = user.asistio;
+                    const data = doc.data();
+                    const yaAsistio = data.asistio;
+                    document.getElementById('r-nombre').innerText = data.nombre;
+                    document.getElementById('r-edad').innerText = data.edad + " AÑOS";
+                    document.getElementById('r-sueno').innerText = `"${data.sueno}"`;
                     
-                    document.getElementById('res-nombre').innerText = user.nombre;
-                    document.getElementById('res-edad').innerText = user.edad + " años";
-                    document.getElementById('res-sueno').innerText = user.sueno;
+                    const s = document.getElementById('r-status');
+                    s.innerText = yaAsistio ? "YA INGRESÓ" : "VALIDADO ✅";
+                    s.className = yaAsistio ? "py-4 text-center rounded-xl font-black bg-amber-100 text-amber-600 border-2 border-amber-200" : "py-4 text-center rounded-xl font-black bg-green-100 text-green-600 border-2 border-green-200";
                     
-                    const resDiv = document.getElementById('resultado');
-                    resDiv.classList.remove('hidden');
-
-                    if(yaAsistio) {
-                        resDiv.style.borderTopColor = "#f59e0b"; // Naranja
-                        document.getElementById('icon-status').innerHTML = "⚠️ <span class='text-orange-600 font-bold'>YA INGRESÓ</span>";
-                    } else {
-                        resDiv.style.borderTopColor = "#10b981"; // Verde
-                        document.getElementById('icon-status').innerHTML = "✅ <span class='text-green-600 font-bold'>INGRESO VÁLIDO</span>";
-                        db.collection("invitados").doc(decodedText).update({ asistio: true });
-                    }
-                } else {
-                    alert("⚠️ QR NO REGISTRADO EN EL SISTEMA");
-                    reiniciarScanner();
+                    if(!yaAsistio) db.collection("invitados").doc(id).update({ asistio: true });
+                    document.getElementById('res').classList.remove('hidden');
+                } else { 
+                    alert("QR NO VÁLIDO O NO REGISTRADO"); 
+                    location.reload(); 
                 }
-            });
+            }).catch(err => { alert("Error: " + err); location.reload(); });
         }
-
-        function cerrarResultado() {
-            document.getElementById('resultado').classList.add('hidden');
-            reiniciarScanner();
-        }
-
-        function reiniciarScanner() {
-            html5QrcodeScanner.render(onScanSuccess);
-        }
-
-        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
-        html5QrcodeScanner.render(onScanSuccess);
+        let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+        scanner.render(onScanSuccess);
     </script>
 </body>
 </html>
