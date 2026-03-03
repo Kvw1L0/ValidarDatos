@@ -3,98 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff - Validación de Pases</title>
+    <title>Staff - Santander</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
-    
     <style>
-        /* Estilos personalizados armónicos */
-        body {
-            background-color: #0f172a; /* Azul slate muy oscuro para enfoque del staff */
-            background-image: url('fondo.png'); /* Opcional: Tu fondo con opacidad baja */
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-        
-        /* Contenedor del escáner con borde de enfoque */
-        #reader {
-            border: 4px solid #6366f1 !important; /* Azul índigo */
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
-        }
-        
-        /* Ocultar elementos de selección de cámara innecesarios */
-        #reader__dashboard_section_csr_span, 
-        #reader__camera_selection {
-            display: none !important;
-        }
-        
-        /* Estilo para los botones internos de la librería (detener/iniciar) */
-        #reader__dashboard_section_swaplink {
-            background-color: #334155;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            margin-top: 10px;
-            display: inline-block;
-        }
-
-        .animacion-ingreso {
-            animation: slideInUp 0.5s ease-out forwards;
-        }
-        
-        @keyframes slideInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        body { background-color: #1a1a1a; }
+        #reader { border: 4px solid #ec0000 !important; border-radius: 20px; overflow: hidden; }
+        #reader__camera_selection { display: none !important; }
     </style>
 </head>
-<body class="min-h-screen text-slate-100 p-6 flex flex-col items-center">
-
+<body class="min-h-screen text-white p-6 flex flex-col items-center">
     <div class="w-full max-w-lg">
-        <header class="flex items-center justify-between mb-8 pb-4 border-b border-slate-700">
-            <div>
-                <h1 class="text-2xl font-bold tracking-tight text-indigo-100">Staff Validación</h1>
-                <p class="text-slate-400 text-sm">Escanea el Pase Mágico para el ingreso</p>
-            </div>
-            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-green-400 border border-slate-700">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                LIVE
-            </div>
+        <header class="text-center mb-8">
+            <h1 class="text-2xl font-black uppercase text-[#ec0000]">Santander Staff</h1>
+            <p class="text-gray-400">Validación de Pases Mágicos</p>
         </header>
-        
-        <div id="reader" class="w-full bg-black mb-10 relative">
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div class="w-64 h-64 border-4 border-dashed border-white/50 rounded-3xl"></div>
+        <div id="reader" class="w-full bg-black"></div>
+        <div id="resultado" class="hidden mt-6 p-8 bg-white text-black rounded-3xl border-t-8 border-[#ec0000] animate-bounce-in">
+            <h2 id="res-nombre" class="text-3xl font-black uppercase leading-tight"></h2>
+            <p id="res-edad" class="text-lg font-bold text-gray-500 mb-4"></p>
+            <div class="bg-red-50 p-4 rounded-xl border-l-4 border-[#ec0000] italic mb-6">
+                <span id="res-sueno" class="text-xl"></span>
             </div>
-        </div>
-
-        <div id="resultado" class="hidden text-center bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl animacion-ingreso">
-            <div id="icon-status" class="mb-5"></div>
-            
-            <h2 id="res-nombre" class="text-4xl font-black text-white uppercase leading-tight tracking-tighter"></h2>
-            <p id="res-edad" class="text-xl font-semibold text-slate-400 mb-4"></p>
-            
-            <blockquote class="bg-indigo-950/50 p-6 rounded-2xl border-l-4 border-indigo-500 italic text-indigo-100 mb-6 text-xl leading-relaxed">
-                <span class="text-xs text-indigo-400 block not-italic font-bold uppercase mb-1 tracking-widest">Su gran sueño es:</span>
-                <span id="res-sueno"></span>
-            </blockquote>
-            
-            <div id="status-badge" class="font-bold py-3 px-6 rounded-full inline-block text-sm uppercase tracking-widest mb-6"></div>
-            
-            <button onclick="cerrarYReiniciar()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition shadow-lg text-lg">
-                Siguiente Escaneo
-            </button>
+            <div id="status-badge" class="w-full text-center py-4 rounded-xl font-black uppercase tracking-widest mb-4"></div>
+            <button onclick="location.reload()" class="w-full bg-black text-white py-4 rounded-xl font-bold uppercase">Siguiente Escaneo</button>
         </div>
     </div>
-
     <script>
-        // CONFIGURACIÓN FIREBASE (validatos-18ec1)
         const firebaseConfig = {
             apiKey: "AIzaSyB2AAnosFdchf9vxhBRzlf5F0GpRDvzFSQ",
             authDomain: "validatos-18ec1.firebaseapp.com",
@@ -105,114 +42,31 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
-        let html5QrcodeScanner; // Variable global para el escáner
-
-        function onScanSuccess(decodedText) {
-            console.log(`Código escaneado: ${decodedText}`);
-            
-            // 1. Detener el escáner temporalmente para procesar
-            html5QrcodeScanner.clear().then(() => {
-                // 2. Buscar el ID escaneado en la base de datos de Firebase (validatos-18ec1)
-                validarInvitado(decodedText);
-            }).catch(error => {
-                console.error("Error al limpiar el escáner: ", error);
-                alert("Hubo un error al procesar el escaneo. Por favor, reinicia la página.");
-            });
-        }
-
-        function validarInvitado(invitadoId) {
-            db.collection("invitados").doc(invitadoId).get().then((doc) => {
+        function onScanSuccess(id) {
+            scanner.clear();
+            db.collection("invitados").doc(id).get().then(doc => {
                 if (doc.exists) {
-                    const usuario = doc.data();
-                    const yaIngreso = usuario.asistio;
-                    
-                    // 3. Rellenar la UI de resultados
-                    document.getElementById('res-nombre').innerText = usuario.nombre;
-                    document.getElementById('res-edad').innerText = usuario.edad + " años";
-                    document.getElementById('res-sueno').innerText = usuario.sueno;
-                    
+                    const u = doc.data();
+                    document.getElementById('res-nombre').innerText = u.nombre;
+                    document.getElementById('res-edad').innerText = u.edad + " Años";
+                    document.getElementById('res-sueno').innerText = u.sueno;
                     const resDiv = document.getElementById('resultado');
-                    const iconStatus = document.getElementById('icon-status');
-                    const statusBadge = document.getElementById('status-badge');
-                    
-                    // Mostrar panel de resultados
+                    const badge = document.getElementById('status-badge');
                     document.getElementById('reader').classList.add('hidden');
                     resDiv.classList.remove('hidden');
-
-                    if(yaIngreso) {
-                        // Caso: Ya ingresó (Alerta amarilla)
-                        iconStatus.innerHTML = `
-                            <div class="mx-auto w-16 h-16 bg-amber-100/10 rounded-full flex items-center justify-center mb-5 border-4 border-amber-900 shadow-inner">
-                                <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                            </div>
-                        `;
-                        statusBadge.innerText = "⚠️ Entrada Ya Utilizada";
-                        statusBadge.className = "font-bold py-3 px-6 rounded-full inline-block text-sm uppercase tracking-widest mb-6 bg-amber-900/50 text-amber-300 border border-amber-700";
-                        
-                        // Opcional: Sonido de alerta
+                    if(u.asistio) {
+                        badge.innerText = "⚠️ Entrada Usada";
+                        badge.className = "py-4 rounded-xl font-black bg-gray-100 text-gray-500";
                     } else {
-                        // Caso: Ingreso Válido (Verde éxito)
-                        iconStatus.innerHTML = `
-                            <div class="mx-auto w-16 h-16 bg-green-100/10 rounded-full flex items-center justify-center mb-5 border-4 border-green-900 shadow-inner">
-                                <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            </div>
-                        `;
-                        statusBadge.innerText = "✅ Pase Válido - ¡Bienvenido!";
-                        statusBadge.className = "font-bold py-3 px-6 rounded-full inline-block text-sm uppercase tracking-widest mb-6 bg-green-900/50 text-green-300 border border-green-700";
-
-                        // 4. Marcar como asistido en Firebase al instante
-                        db.collection("invitados").doc(invitadoId).update({
-                            asistio: true,
-                            fechaIngreso: firebase.firestore.FieldValue.serverTimestamp()
-                        }).then(() => {
-                            console.log("Asistencia registrada correctamente.");
-                        }).catch(error => {
-                            console.error("Error al actualizar asistencia: ", error);
-                            alert("Atención: Pase válido pero hubo un error al registrar el ingreso en la base de datos.");
-                        });
-                        
-                        // Opcional: Sonido de éxito
+                        badge.innerText = "✅ Pase Válido";
+                        badge.className = "py-4 rounded-xl font-black bg-green-100 text-green-600";
+                        db.collection("invitados").doc(id).update({ asistio: true });
                     }
-                } else {
-                    alert("⚠️ CÓDIGO QR NO REGISTRADO O INVÁLIDO");
-                    cerrarYReiniciar(); // Volver al escáner
-                }
-            }).catch((error) => {
-                console.error("Error al consultar Firebase: ", error);
-                alert("Hubo un error al validar el pase. Por favor, verifica tu conexión a internet.");
-                cerrarYReiniciar();
+                } else { alert("QR Inválido"); location.reload(); }
             });
         }
-
-        function cerrarYReiniciar() {
-            // Ocultar resultados, mostrar escáner
-            document.getElementById('resultado').classList.add('hidden');
-            document.getElementById('reader').classList.remove('hidden');
-            
-            // Reiniciar el escáner automáticamente
-            iniciarEscaner();
-        }
-
-        // Función para iniciar el escáner (aislada para reutilizar)
-        function iniciarEscaner() {
-            // MEJORA SOLICITADA: Borrar selección de cámara y usar por defecto la principal trasera
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 15, // Velocidad de escaneo
-                qrbox: { width: 250, height: 250 }, // Caja de enfoque visual
-                rememberLastUsedCamera: true, // Recordar cámara trasera si es posible
-                aspectRatio: 1.0, // Escáner cuadrado
-                // Forzar la cámara trasera principal si está disponible
-                config: { cameraConstraint: { facingMode: "environment" } } 
-            });
-            
-            html5QrcodeScanner.render(onScanSuccess);
-        }
-
-        // Iniciar al cargar la página
-        document.addEventListener("DOMContentLoaded", function() {
-            iniciarEscaner();
-        });
+        let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250, videoConstraints: { facingMode: "environment" } });
+        scanner.render(onScanSuccess);
     </script>
 </body>
 </html>
