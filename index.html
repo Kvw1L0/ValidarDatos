@@ -35,8 +35,8 @@
     <div id="app" class="vidrio p-10 rounded-3xl shadow-2xl w-full max-w-lg border-t-8 border-[#ec0000]">
         <div id="form-ui">
             <div class="text-center mb-10">
-                <h1 class="text-4xl font-extrabold text-[#444444] tracking-tighter">Santander</h1>
-                <p class="text-[#ec0000] mt-2 font-bold uppercase tracking-widest text-sm">Tu sueño es nuestro motor</p>
+                <img src="logo.png" alt="Logo Santander" class="h-20 mx-auto mb-4 object-contain">
+                <p class="text-[#ec0000] font-bold uppercase tracking-widest text-sm">Tu sueño es nuestro motor</p>
             </div>
             <div class="space-y-6">
                 <input id="nombre" type="text" placeholder="Nombre Completo" class="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-[#ec0000] outline-none transition-all font-medium">
@@ -65,13 +65,17 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
         async function guardarYGenerar() {
             const nombre = document.getElementById('nombre').value;
             const edad = document.getElementById('edad').value;
             const sueno = document.getElementById('sueno').value;
             if(!nombre || !edad || !sueno) return alert("Completa todos los datos");
+            
             const btn = document.getElementById('btn-submit');
-            btn.disabled = true; btn.innerText = "PROCESANDO...";
+            btn.disabled = true; 
+            btn.innerText = "PROCESANDO...";
+            
             try {
                 const docRef = await db.collection("invitados").add({
                     nombre, edad, sueno, asistio: false, fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
@@ -79,7 +83,11 @@
                 document.getElementById('form-ui').classList.add('hidden');
                 document.getElementById('qr-ui').classList.remove('hidden');
                 new QRCode(document.getElementById("qrcode"), { text: docRef.id, width: 220, height: 220, colorDark: "#ec0000" });
-            } catch (e) { alert("Error: " + e.message); btn.disabled = false; }
+            } catch (e) { 
+                alert("Error: " + e.message); 
+                btn.disabled = false; 
+                btn.innerText = "Generar mi Pase";
+            }
         }
     </script>
 </body>
