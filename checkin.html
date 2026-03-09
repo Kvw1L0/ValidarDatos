@@ -10,28 +10,39 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
     <style>
         body { background-color: #1a1a1a; }
-        #reader { border: 4px solid #ec0000 !important; border-radius: 20px; overflow: hidden; }
-        #reader__camera_selection { display: none !important; }
+        #reader { 
+            border: 4px solid #ec0000 !important; 
+            border-radius: 24px; 
+            overflow: hidden; 
+            background: #000;
+        }
+        /* Ocultamos cualquier interfaz residual de la librería */
+        #reader__dashboard, #reader__status_span { display: none !important; }
+        video { object-fit: cover !important; }
     </style>
 </head>
 <body class="min-h-screen text-white p-6 flex flex-col items-center">
     <div class="w-full max-w-lg">
         <header class="text-center mb-8">
             <h1 class="text-2xl font-black uppercase text-[#ec0000]">Santander Staff</h1>
-            <p class="text-gray-400">Validación de Pases Mágicos</p>
+            <p class="text-gray-400">Validación Directa (Cámara Trasera)</p>
         </header>
-        <div id="reader" class="w-full bg-black"></div>
-        <div id="resultado" class="hidden mt-6 p-8 bg-white text-black rounded-3xl border-t-8 border-[#ec0000] animate-bounce-in">
+
+        <div id="reader" class="w-full aspect-square"></div>
+
+        <div id="resultado" class="hidden mt-6 p-8 bg-white text-black rounded-3xl border-t-8 border-[#ec0000] shadow-2xl">
             <h2 id="res-nombre" class="text-3xl font-black uppercase leading-tight"></h2>
             <p id="res-edad" class="text-lg font-bold text-gray-500 mb-4"></p>
             <div class="bg-red-50 p-4 rounded-xl border-l-4 border-[#ec0000] italic mb-6">
                 <span id="res-sueno" class="text-xl"></span>
             </div>
             <div id="status-badge" class="w-full text-center py-4 rounded-xl font-black uppercase tracking-widest mb-4"></div>
-            <button onclick="location.reload()" class="w-full bg-black text-white py-4 rounded-xl font-bold uppercase">Siguiente Escaneo</button>
+            <button onclick="location.reload()" class="w-full bg-black text-white py-4 rounded-xl font-bold uppercase hover:bg-zinc-800 transition-colors">Siguiente Escaneo</button>
         </div>
     </div>
+
     <script>
+        // Configuración Firebase (La tuya original)
         const firebaseConfig = {
             apiKey: "AIzaSyB2AAnosFdchf9vxhBRzlf5F0GpRDvzFSQ",
             authDomain: "validatos-18ec1.firebaseapp.com",
@@ -42,31 +53,72 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        function onScanSuccess(id) {
-            scanner.clear();
-            db.collection("invitados").doc(id).get().then(doc => {
-                if (doc.exists) {
-                    const u = doc.data();
-                    document.getElementById('res-nombre').innerText = u.nombre;
-                    document.getElementById('res-edad').innerText = u.edad + " Años";
-                    document.getElementById('res-sueno').innerText = u.sueno;
-                    const resDiv = document.getElementById('resultado');
-                    const badge = document.getElementById('status-badge');
-                    document.getElementById('reader').classList.add('hidden');
-                    resDiv.classList.remove('hidden');
-                    if(u.asistio) {
-                        badge.innerText = "⚠️ Entrada Usada";
-                        badge.className = "py-4 rounded-xl font-black bg-gray-100 text-gray-500";
-                    } else {
-                        badge.innerText = "✅ Pase Válido";
-                        badge.className = "py-4 rounded-xl font-black bg-green-100 text-green-600";
-                        db.collection("invitados").doc(id).update({ asistio: true });
-                    }
-                } else { alert("QR Inválido"); location.reload(); }
+
+        // Función para el sonido de éxito (Beep)
+        function playSuccessSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.setValueAtTime(880, context.currentTime); // Nota La (A5)
+            gain.gain.setValueAtTime(0, context.currentTime);
+            gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.05);
+            gain.gain.linearRampToValueAtTime(0, context.currentTime + 0.3);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.3);
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+
+        function startScanner() {
+            html5QrCode.start(
+                { facingMode: "environment" }, // FUERZA CÁMARA TRASERA
+                { fps: 20, qrbox: { width: 250, height: 250 } },
+                onScanSuccess
+            ).catch(err => {
+                console.error("Error cámara:", err);
+                alert("Error: Asegúrate de dar permisos de cámara y usar HTTPS.");
             });
         }
-        let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250, videoConstraints: { facingMode: "environment" } });
-        scanner.render(onScanSuccess);
+
+        function onScanSuccess(decodedText) {
+            playSuccessSound();
+            html5QrCode.stop().then(() => {
+                db.collection("invitados").doc(decodedText).get().then(doc => {
+                    if (doc.exists) {
+                        const u = doc.data();
+                        document.getElementById('res-nombre').innerText = u.nombre;
+                        document.getElementById('res-edad').innerText = u.edad + " Años";
+                        document.getElementById('res-sueno').innerText = u.sueno;
+                        
+                        document.getElementById('reader').classList.add('hidden');
+                        const resDiv = document.getElementById('resultado');
+                        const badge = document.getElementById('status-badge');
+                        resDiv.classList.remove('hidden');
+
+                        if(u.asistio) {
+                            badge.innerText = "⚠️ Entrada Usada";
+                            badge.className = "py-4 rounded-xl font-black bg-gray-100 text-gray-500";
+                        } else {
+                            badge.innerText = "✅ Pase Válido";
+                            badge.className = "py-4 rounded-xl font-black bg-green-100 text-green-600";
+                            db.collection("invitados").doc(decodedText).update({ asistio: true });
+                        }
+                    } else {
+                        alert("Código QR no reconocido en la base de datos.");
+                        location.reload();
+                    }
+                }).catch(e => {
+                    alert("Error de conexión con Firebase.");
+                    location.reload();
+                });
+            });
+        }
+
+        // Iniciar al cargar
+        window.onload = startScanner;
     </script>
 </body>
 </html>
